@@ -7,7 +7,9 @@
 API serverless di **Vercel** untuk mengirim email OTP ke website lain.  
 Cukup deploy sekali, lalu panggil dari backend mana pun via HTTP.
 
-**Live:** `https://auth-fyymotion.vercel.app` · **Pengirim:** `Fyymotion <fyymotion@noreply>` · **Tanpa akun** — cukup `x-api-key`
+**Live:** `https://auth-fyymotion.vercel.app` · **Pengirim:** `Fyymotion <noreply@fyymotion.com>` · **Tanpa akun** — cukup `x-api-key`
+
+> ⚠️ **URGENT — Mailjet Sender Validation:** Jika pakai Mailjet, sender `noreply@fyymotion.com` **WAJIB** divalidasi di [Mailjet Senders](https://app.mailjet.com/account/sender) dalam **3 hari**, kalau tidak email diblokir! Lihat [WEBHOOK_MAILJET.md#sender-validation](./docs/WEBHOOK_MAILJET.md#sender-validation).
 
 ```
 Website Lain (Backend) --POST /api/send-otp-->  Fyymotion Auth (Vercel) --SMTP--> Gmail / Brevo / Mailjet --> Inbox User
@@ -44,7 +46,7 @@ Lihat [INTEGRATION_WEB_UTAMA.md](./docs/INTEGRATION_WEB_UTAMA.md) untuk contoh E
 ## Tanpa Akun?
 
 **Betul — API tanpa daftar/login.** Web lain cukup header `x-api-key`.  
-Tapi SMTP tetap butuh akun provider (Gmail/Brevo/Mailjet) untuk login & kirim — `SMTP_USER`+`PASS` di Vercel. `SMTP_FROM` hanya tampilan `fyymotion@noreply`.
+Tapi SMTP tetap butuh akun provider (Gmail/Brevo/Mailjet) untuk login & kirim — `SMTP_USER`+`PASS` di Vercel. `SMTP_FROM` hanya tampilan `noreply@fyymotion.com`.
 
 ---
 
@@ -115,7 +117,7 @@ Lihat [docs/EXAMPLES.md](./docs/EXAMPLES.md) untuk PHP Laravel & Python.
 | `SMTP_PORT` | `587` |
 | `SMTP_USER` | API Key Mailjet / email |
 | `SMTP_PASS` | Secret Key / App Password |
-| `SMTP_FROM` | `Fyymotion <fyymotion@noreply>` |
+| `SMTP_FROM` | `Fyymotion <noreply@fyymotion.com>` |
 | `API_KEYS` | `key-acak-panjang` |
 | `MAILJET_WEBHOOK_TOKEN` | `token-webhook` |
 | `WEBHOOK_FORWARD_URL` | `https://web-utama.com/api/mailjet-events` |

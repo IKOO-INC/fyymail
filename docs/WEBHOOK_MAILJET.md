@@ -242,6 +242,43 @@ Sudah terpasang di Vercel:
 
 ---
 
+## Sender Validation (WAJIB — 3 Hari!)
+
+> ⚠️ **PENTING:** Mailjet memblokir sender yang belum divalidasi! Kamu dapat email:  
+> `sender address: noreply@fyymotion.com has not been validated yet on your account: 8dcbff74b153ae5db02809ef1abae945. Please validate within 3 days`
+
+**Kenapa?** Mailjet anti-spam. Semua `SMTP_FROM` harus divalidasi dulu, kalau tidak semua email diblokir.
+
+**Format yang benar:** `Nama <local@domain.tld>` — domain WAJIB ada TLD (`fyymotion.com`), bukan `fyymotion@noreply` (domain `noreply` tidak valid!).
+
+### Cara Validasi (5 Menit)
+
+**Opsi A — Validasi Email Tunggal (Cepat):**
+1. Buka **Mailjet → [Senders & Domains](https://app.mailjet.com/account/sender)** atau klik link di email peringatan
+2. Klik **Add a sender address** → isi `noreply@fyymotion.com` (atau domain kamu: `noreply@yourdomain.com`)
+3. Cek inbox email tersebut → klik **link validasi** dari Mailjet
+4. Status berubah jadi **Active** ✅
+
+**Opsi B — Validasi Domain (Disarankan Production):**
+1. Buka **Senders & Domains → Add a domain** → isi `fyymotion.com`
+2. Tambah DNS record **SPF** + **DKIM** yang diberikan Mailjet ke domain kamu
+3. Klik Validate → status **Active** dalam beberapa jam
+
+**Alternatif Cepat:** Ganti `SMTP_FROM` di Vercel ke email kamu yang **sudah validated** (misal Gmail pribadi yang sudah kamu daftarkan di Mailjet):
+```env
+SMTP_FROM="Fyymotion <email-kamu-yang-sudah-valid@gmail.com>"
+```
+Lalu Redeploy di Vercel.
+
+### Update di Vercel
+
+```
+Vercel → Project auth-fyymotion → Settings → Environment Variables
+→ Edit SMTP_FROM → Save → Deployments → Redeploy
+```
+
+Cek health: `curl https://auth-fyymotion.vercel.app/api/health` → lihat `from` sudah benar.
+
 ## Untuk SMTP via Mailjet (Bukan Webhook)
 
 Kalau mau kirim OTP via Mailjet SMTP (bukan Gmail/Brevo):
@@ -250,12 +287,13 @@ Kalau mau kirim OTP via Mailjet SMTP (bukan Gmail/Brevo):
 SMTP_HOST=in-v3.mailjet.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=API_KEY_Mailjet
+SMTP_USER=API_KEY_Mailjet      # dari https://app.mailjet.com/account/apikeys
 SMTP_PASS=Secret_Key_Mailjet
-SMTP_FROM=Fyymotion <fyymotion@noreply>
+SMTP_FROM=Fyymotion <noreply@fyymotion.com>  # <-- HARUS sudah validated!
 ```
 
 Dapatkan API Key di: https://app.mailjet.com/account/apikeys
+Validasi sender di: https://app.mailjet.com/account/sender
 
 ---
 

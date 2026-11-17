@@ -4,7 +4,7 @@ Dokumen ini **khusus untuk tim Web Utama** yang akan pakai Fyymotion Auth sebaga
 
 > Base URL: `https://auth-fyymotion.vercel.app`
 > Repo: `IKOO-INC/fyymail` (branch `arena/d4a3315d-fyymail`)
-> Pengirim email: `Fyymotion <fyymotion@noreply>`
+> Pengirim email: `Fyymotion <noreply@fyymotion.com>`
 
 ---
 
@@ -222,7 +222,7 @@ async function handleVerifyOTP(e) {
 Sebelum launch, test ini:
 
 - [ ] `GET https://auth-fyymotion.vercel.app/api/health` → `smtpConfigured:true` ?
-- [ ] Kirim OTP ke email valid → terima email dari `fyymotion@noreply` ?
+- [ ] Kirim OTP ke email valid → terima email dari `noreply@fyymotion.com` ?
 - [ ] Verifikasi dengan OTP benar → `valid:true` ?
 - [ ] Verifikasi lagi dengan OTP sama → harus `valid:false` (sekali pakai)
 - [ ] Kirim OTP 6x ke email sama dalam 10 menit → harus `429` ?
@@ -241,7 +241,7 @@ Sebelum launch, test ini:
       │───────────────────────────────>│  POST /api/send-otp {email}         │
       │                                │────────────────────────────────────>│
       │                                │  generate OTP, save hash, sendMail  │
-      │                                │  via SMTP fyymotion@noreply         │
+      │                                │  via SMTP noreply@fyymotion.com         │
       │                                │<────────────────────────────────────│
       │  {success, expiresIn}          │  {success, email: t***}             │
       │<───────────────────────────────│                                     │

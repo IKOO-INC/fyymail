@@ -14,7 +14,7 @@ Simpan di `.env` Web Utama:
 ```env
 FYMAIL_URL=https://auth-fyymotion.vercel.app
 FYMAIL_API_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
-Fyymotion <fyymotion@noreply> = pengirim email
+Fyymotion <noreply@fyymotion.com> = pengirim email
 ```
 
 > Generate baru: `openssl rand -hex 32`
@@ -54,7 +54,7 @@ Response:
   "expiresInMinutes": 10
 }
 ```
-User akan terima email dari `Fyymotion <fyymotion@noreply>` dengan kode 6 digit.
+User akan terima email dari `Fyymotion <noreply@fyymotion.com>` dengan kode 6 digit.
 
 ---
 

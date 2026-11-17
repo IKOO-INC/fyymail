@@ -11,7 +11,7 @@ module.exports = (req, res) => {
   return json(res, 200, {
     success: true,
     service: 'fyymotion-auth',
-    from: process.env.SMTP_FROM || 'Fyymotion <fyymotion@noreply>',
+    from: process.env.SMTP_FROM || 'Fyymotion <noreply@fyymotion.com>',
     status: 'ok',
     time: new Date().toISOString(),
     smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),

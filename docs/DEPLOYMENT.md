@@ -42,7 +42,7 @@ Sudah terpasang di `auth-fyymotion`:
 | Variable | Type | Value (contoh) | Keterangan |
 |---|---|---|---|
 | `API_KEYS` | encrypted | `a1b2c3...` | API key untuk Web Utama |
-| `SMTP_FROM` | plain | `Fyymotion <fyymotion@noreply>` | Pengirim |
+| `SMTP_FROM` | plain | `Fyymotion <noreply@fyymotion.com>` | Pengirim |
 | `ALLOWED_ORIGINS` | plain | `*` | CORS |
 | `OTP_LENGTH` | plain | `6` | Panjang OTP |
 | `OTP_TTL_SECONDS` | plain | `600` | TTL 10 menit |

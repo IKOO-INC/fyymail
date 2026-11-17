@@ -46,7 +46,7 @@ Alias: `GET /health`
 {
   "success": true,
   "service": "fyymotion-auth",
-  "from": "Fyymotion <fyymotion@noreply>",
+  "from": "Fyymotion <noreply@fyymotion.com>",
   "status": "ok",
   "time": "2026-06-25T10:00:00.000Z",
   "smtpConfigured": true,

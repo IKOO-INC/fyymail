@@ -35,7 +35,7 @@ API SMTP untuk kirim OTP — dipakai oleh **web utama** dan website lain sebagai
 
 **Alur OTP:**
 1. User input email di Web Utama → Web Utama panggil `POST /api/send-otp`
-2. Fyymotion Auth generate OTP 6 digit, simpan hash (10 menit), kirim email via SMTP `fyymotion@noreply`
+2. Fyymotion Auth generate OTP 6 digit, simpan hash (10 menit), kirim email via SMTP `noreply@fyymotion.com`
 3. User cek email, input OTP → Web Utama panggil `POST /api/verify-otp` → kalau `valid: true`, login/register lanjut
 
 **Tanpa akun:** Web Utama tidak perlu bikin user di Fyymotion Auth. Cukup pakai `x-api-key`.
@@ -61,4 +61,4 @@ Local      : http://localhost:3000 (vercel dev)
 
 ---
 
-**Tim Fyymotion Auth** — `Fyymotion <fyymotion@noreply>`
+**Tim Fyymotion Auth** — `Fyymotion <noreply@fyymotion.com>`
