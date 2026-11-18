@@ -1,6 +1,6 @@
 'use strict';
 
-const { handleCors, json, getBody, isValidEmail, normalizeEmail, maskEmail, checkRateLimit } = require('../lib/helpers');
+const { handleCors, json, getParams, isValidEmail, normalizeEmail, maskEmail, checkRateLimit } = require('../lib/helpers');
 const { isAuthorized } = require('../lib/auth');
 const { sendMail } = require('../lib/mailer');
 const { otpEmail } = require('../lib/templates');
@@ -9,15 +9,15 @@ const { generateOtp, saveOtp } = require('../lib/otp-store');
 module.exports = async (req, res) => {
   if (handleCors(req, res)) return;
 
-  if (req.method !== 'POST') {
-    return json(res, 405, { success: false, error: 'Method tidak diizinkan. Gunakan POST.' });
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    return json(res, 405, { success: false, error: 'Method tidak diizinkan. Gunakan GET atau POST.' });
   }
 
   if (!isAuthorized(req)) {
-    return json(res, 401, { success: false, error: 'API key tidak valid atau tidak ada. Kirim header x-api-key.' });
+    return json(res, 401, { success: false, error: 'API key tidak valid. Kirim header x-api-key atau param ?key=API_KEY' });
   }
 
-  const body = getBody(req);
+  const body = getParams(req);
   const emailRaw = body.email || body.to || '';
   const appName = String(body.appName || body.app || 'Fyymotion').slice(0, 60);
   const purpose = body.purpose ? String(body.purpose).slice(0, 80) : undefined;

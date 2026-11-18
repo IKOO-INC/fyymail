@@ -41,8 +41,14 @@ function mockRes() {
   return res;
 }
 
-function mockReq({ method = 'GET', headers = {}, body = {} } = {}) {
-  return { method, headers, body };
+function mockReq({ method = 'GET', headers = {}, body = {}, query = null, url = '' } = {}) {
+  const req = { method, headers, body, url };
+  if (query) req.query = query;
+  else if (url && url.includes('?')) {
+    // fallback biar mirip Vercel kalau query tidak dipassing explicit
+    req.query = Object.fromEntries(new URLSearchParams(url.split('?')[1]));
+  }
+  return req;
 }
 
 let passed = 0;
@@ -121,11 +127,40 @@ function assert(name, cond, extra = '') {
   }), res);
   assert('OTP sekali pakai', res.body.valid === false, JSON.stringify(res.body));
 
-  // 9. Method tidak diizinkan
-  console.log('\n9. GET /api/send-otp (harus 405)');
+  // 9. GET support (baru: GET via query param)
+  console.log('\n9. GET /api/send-otp via query param');
   res = mockRes();
-  await sendOtp(mockReq({ method: 'GET', headers: { 'x-api-key': 'test-key-1234567890' } }), res);
-  assert('405 untuk GET', res.statusCode === 405, `status=${res.statusCode}`);
+  await sendOtp(mockReq({
+    method: 'GET',
+    headers: { 'x-api-key': 'test-key-1234567890' },
+    query: { email: 'user2@example.com', appName: 'WebsiteKu2' },
+    url: '/api/send-otp?email=user2@example.com&appName=WebsiteKu2',
+  }), res);
+  assert('GET 200 kirim OTP', res.statusCode === 200 && res.body.success === true, `status=${res.statusCode} body=${JSON.stringify(res.body)}`);
+  const otp2 = res.body.otp;
+  assert('GET OTP 6 digit', /^\d{6}$/.test(otp2 || ''), `otp=${otp2}`);
+
+  // 10. GET auth via ?key= (tanpa header, untuk tes browser)
+  console.log('\n10. GET /api/send-otp auth via ?key=');
+  res = mockRes();
+  await sendOtp(mockReq({
+    method: 'GET',
+    headers: {},
+    query: { email: 'user3@example.com', appName: 'WebsiteKu', key: 'test-key-1234567890' },
+    url: '/api/send-otp?email=user3@example.com&appName=WebsiteKu&key=test-key-1234567890',
+  }), res);
+  assert('GET via ?key= 200', res.statusCode === 200 && res.body.success === true, `status=${res.statusCode} body=${JSON.stringify(res.body)}`);
+
+  // 11. GET verify-otp via query
+  console.log('\n11. GET /api/verify-otp via query');
+  res = mockRes();
+  await verifyOtp(mockReq({
+    method: 'GET',
+    headers: {},
+    query: { email: 'user2@example.com', otp: otp2, appName: 'WebsiteKu2', key: 'test-key-1234567890' },
+    url: `/api/verify-otp?email=user2@example.com&otp=${otp2}&appName=WebsiteKu2&key=test-key-1234567890`,
+  }), res);
+  assert('GET verify OTP benar', res.body.valid === true, JSON.stringify(res.body));
 
   console.log(`\n== Hasil: ${passed} lolos, ${failed} gagal ==`);
   process.exit(failed ? 1 : 0);
