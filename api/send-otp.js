@@ -63,9 +63,11 @@ module.exports = async (req, res) => {
     mailInfo = await sendMail({ to: email, subject, html, text });
   } catch (err) {
     console.error('[send-otp] Gagal kirim email:', err.message);
+    // Tampilkan detail Resend biar user tau kenapa onboarding@resend.dev diblok
+    const detail = err.message && err.message.includes('Resend API') ? ` Detail: ${err.message}` : '';
     return json(res, 502, {
       success: false,
-      error: 'Gagal mengirim email. Periksa konfigurasi SMTP di server.',
+      error: 'Gagal mengirim email. Periksa konfigurasi SMTP di server.' + detail,
     });
   }
 
