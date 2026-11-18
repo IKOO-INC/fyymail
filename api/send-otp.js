@@ -63,8 +63,9 @@ module.exports = async (req, res) => {
 
   const { subject, html, text } = otpEmail({ otp, appName, expiresInMinutes, purpose });
 
+  let mailInfo = null;
   try {
-    await sendMail({ to: email, subject, html, text });
+    mailInfo = await sendMail({ to: email, subject, html, text });
   } catch (err) {
     console.error('[send-otp] Gagal kirim email:', err.message);
     return json(res, 502, {
@@ -80,6 +81,13 @@ module.exports = async (req, res) => {
     expiresIn: ttlSeconds,
     expiresInMinutes,
   };
+
+  // Kalau pakai Ethereal temp mail, kasih previewUrl biar bisa cek email
+  if (mailInfo && mailInfo.previewUrl) {
+    response.previewUrl = mailInfo.previewUrl;
+    response.mode = 'temp-mail';
+    response.note = 'Mode temp mail aktif — cek previewUrl untuk lihat email';
+  }
 
   // Hanya untuk testing lokal — JANGAN aktifkan di production
   if (process.env.ALLOW_OTP_IN_RESPONSE === 'true') {
