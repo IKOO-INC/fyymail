@@ -67,17 +67,17 @@ function assert(name, cond, extra = '') {
   health(mockReq({ method: 'GET' }), res);
   assert('health 200', res.statusCode === 200 && res.body.success === true, JSON.stringify(res.body));
 
-  // 2. Tanpa API key -> 401
-  console.log('\n2. POST /api/send-otp tanpa API key');
+  // 2. Tanpa API key tetap bisa (private — no auth)
+  console.log('\n2. POST /api/send-otp tanpa API key (no auth)');
   res = mockRes();
-  await sendOtp(mockReq({ method: 'POST', body: { email: 'a@b.com' } }), res);
-  assert('401 tanpa key', res.statusCode === 401, `status=${res.statusCode}`);
+  await sendOtp(mockReq({ method: 'POST', body: { email: 'a@b.com', appName: 'test' } }), res);
+  assert('200 tanpa key (no auth)', res.statusCode === 200, `status=${res.statusCode} body=${JSON.stringify(res.body)}`);
 
-  // 3. API key salah -> 401
-  console.log('\n3. POST /api/send-otp API key salah');
+  // 3. API key salah tetap bisa (auth dihapus)
+  console.log('\n3. POST /api/send-otp API key salah (diabaikan)');
   res = mockRes();
-  await sendOtp(mockReq({ method: 'POST', headers: { 'x-api-key': 'salah' }, body: { email: 'a@b.com' } }), res);
-  assert('401 key salah', res.statusCode === 401, `status=${res.statusCode}`);
+  await sendOtp(mockReq({ method: 'POST', headers: { 'x-api-key': 'salah' }, body: { email: 'a2@b.com', appName: 'test' } }), res);
+  assert('200 key salah diabaikan', res.statusCode === 200, `status=${res.statusCode} body=${JSON.stringify(res.body)}`);
 
   // 4. Email invalid -> 400
   console.log('\n4. POST /api/send-otp email invalid');

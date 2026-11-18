@@ -1,7 +1,6 @@
 'use strict';
 
 const { handleCors, json, getParams, isValidEmail, normalizeEmail, maskEmail } = require('../lib/helpers');
-const { isAuthorized } = require('../lib/auth');
 const { verifyOtp } = require('../lib/otp-store');
 
 module.exports = async (req, res) => {
@@ -9,10 +8,6 @@ module.exports = async (req, res) => {
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     return json(res, 405, { success: false, error: 'Method tidak diizinkan. Gunakan GET atau POST.' });
-  }
-
-  if (!isAuthorized(req)) {
-    return json(res, 401, { success: false, error: 'API key tidak valid. Kirim header x-api-key atau param ?key=API_KEY' });
   }
 
   const body = getParams(req);
