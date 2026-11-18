@@ -2,127 +2,96 @@
 
 [![Live](https://img.shields.io/badge/Live-auth--fyymotion.vercel.app-4f46e5?style=flat)](https://auth-fyymotion.vercel.app/api/health)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?style=flat&logo=vercel)](https://vercel.com)
-[![Mailjet](https://img.shields.io/badge/Mailjet-Webhook-orange?style=flat)](https://dev.mailjet.com/docs/email-api/webhooks/webhooks-overview)
 
-API serverless di **Vercel** untuk mengirim email OTP ke website lain.  
-Cukup deploy sekali, lalu panggil dari backend mana pun via HTTP.
+API serverless di **Vercel** untuk kirim email OTP.  
+**Private — tanpa apikey, support GET.** Cukup buka URL langsung kekirim!
 
-**Live:** `https://auth-fyymotion.vercel.app` · **Pengirim:** `Fyymotion <noreply@fyymotion.com>` · **Tanpa akun** — cukup `x-api-key`
-
-> ⚠️ **URGENT — Mailjet Sender Validation:** Jika pakai Mailjet, sender `noreply@fyymotion.com` **WAJIB** divalidasi di [Mailjet Senders](https://app.mailjet.com/account/sender) dalam **3 hari**, kalau tidak email diblokir! Lihat [WEBHOOK_MAILJET.md#sender-validation](./docs/WEBHOOK_MAILJET.md#sender-validation).
+**Live:** `https://auth-fyymotion.vercel.app` · Preview: `https://auth-fyymotion-git-arena-d4a3315d-fyymail-yoo23mann.vercel.app` · Pengirim `Fyymotion <noreply@fyymotion.com>` (atau Ethereal kalau `TEMP_MAIL=true`)
 
 ```
-Website Lain (Backend) --POST /api/send-otp-->  Fyymotion Auth (Vercel) --SMTP--> Gmail / Brevo / Mailjet --> Inbox User
-Website Lain (Backend) --POST /api/verify-otp-> Fyymotion Auth
-Mailjet --POST /api/webhooks/mailjet--> Fyymotion Auth --forward--> Web Utama (opsional)
+Browser / Web Utama --GET /api/send-otp?email=-->  Fyymotion Auth (Vercel) --SMTP--> Inbox User
+Web Utama --GET /api/verify-otp?email=&otp=--> Fyymotion Auth
 ```
 
 ---
 
-## 📚 Dokumentasi untuk Web Utama
-
-> **Tim Web Utama WAJIB baca ini dulu:**
+## 📚 Dokumentasi untuk Aplikasi Utama
 
 | Dokumen | Deskripsi |
-|---|---|
-| [📖 **Dokumentasi Lengkap**](./docs/README.md) | Index semua docs |
-| [⚡ **Quick Start — 5 Menit**](./docs/QUICKSTART.md) | Mulai langsung coba |
-| [🔌 **API Spec**](./docs/API_SPEC.md) | Detail semua endpoint + error code |
-| [🏗️ **Integrasi Web Utama**](./docs/INTEGRATION_WEB_UTAMA.md) | **Step-by-step checklist — baca ini!** |
-| [💻 **Contoh Code**](./docs/EXAMPLES.md) | Copy-paste Node.js, PHP Laravel, Python |
-| [📬 **Webhook Mailjet**](./docs/WEBHOOK_MAILJET.md) | Tracking sent/open/bounce/spam |
-| [🚀 **Deployment**](./docs/DEPLOYMENT.md) | ENV & deploy di Vercel |
+|---------|-----------|
+| [📖 **Index**](./docs/README.md) | Daftar semua docs |
+| [⚡ **Quick Start — 5 Menit**](./docs/QUICKSTART.md) | Paste URL di browser langsung kirim |
+| [🔌 **API Spec**](./docs/API_SPEC.md) | Detail endpoint GET/POST + error |
+| [🏗️ **Integrasi Web Utama**](./docs/INTEGRATION_WEB_UTAMA.md) | Step-by-step checklist |
+| [💻 **Contoh Code**](./docs/EXAMPLES.md) | Node.js, PHP Laravel, Python |
+| [📬 **Webhook Mailjet**](./docs/WEBHOOK_MAILJET.md) | Tracking sent/open/bounce |
+| [🚀 **Deployment**](./docs/DEPLOYMENT.md) | ENV & deploy Vercel |
 
-**Untuk Web Utama, cukup butuh:**
+**Cukup butuh di Web Utama:**
 ```env
 FYMAIL_URL=https://auth-fyymotion.vercel.app
-FYMAIL_API_KEY=key-dari-devops
+# tanpa API_KEY lagi!
 ```
-
-Lihat [INTEGRATION_WEB_UTAMA.md](./docs/INTEGRATION_WEB_UTAMA.md) untuk contoh Express, Next.js, Laravel, Flask lengkap.
 
 ---
 
-## Tanpa Akun?
+## Cara Pakai Cepat (Tanpa APIKEY)
 
-**Betul — API tanpa daftar/login.** Web lain cukup header `x-api-key`.  
-Tapi SMTP tetap butuh akun provider (Gmail/Brevo/Mailjet) untuk login & kirim — `SMTP_USER`+`PASS` di Vercel. `SMTP_FROM` hanya tampilan `noreply@fyymotion.com`.
+```bash
+# GET — buka di browser juga bisa!
+curl "https://auth-fyymotion.vercel.app/api/send-otp?email=user@example.com&appName=Fyymotion"
+
+# Verify
+curl "https://auth-fyymotion.vercel.app/api/verify-otp?email=user@example.com&otp=123456"
+
+# Health
+curl https://auth-fyymotion.vercel.app/api/health
+
+# POST juga tetap bisa
+curl -X POST https://auth-fyymotion.vercel.app/api/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","appName":"Fyymotion"}'
+```
+
+Response temp-mail:
+```json
+{
+  "success": true,
+  "email": "u***@example.com",
+  "expiresIn": 600,
+  "previewUrl": "https://ethereal.email/message/...",
+  "mode": "temp-mail"
+}
+```
+Buka `previewUrl` buat lihat email (mode Ethereal). Mode SMTP real masuk inbox beneran dengan subject `[noreply] Kode OTP Fyymotion: 123456`.
 
 ---
 
 ## Fitur
 
-- Kirim OTP 6 digit via SMTP (Gmail, Brevo, Resend, **Mailjet**)
-- Generate OTP otomatis + simpan hash (OTP asli tidak disimpan)
-- Verifikasi OTP sekali pakai, max 5x coba, expired 10 menit
-- Auth API Key + Rate limit per email (5x/10 menit) + CORS
-- Template email responsif + Email generik (`/api/send-email`)
-- Webhook Mailjet (`sent/open/click/bounce/spam/blocked/unsub`) + forward ke Web Utama
-- Opsional Redis (Upstash) biar OTP konsisten multi-instance
+- Kirim OTP 6 digit via SMTP (Mailjet/Gmail/Brevo) atau **temp-mail Ethereal** (`TEMP_MAIL=true`)
+- Subject `[noreply]` (ENV `SUBJECT_PREFIX`)
+- GET & POST, tanpa apikey, CORS, rate limit 5/10 menit per email
+- Verify sekali pakai, max 5x coba, expired 10 menit
+- Template email responsif + send-email generik
+- Webhook Mailjet + Redis opsional
 
-## Struktur Project
+## Struktur
 
 ```
 fyymail/
 ├── api/
 │   ├── health.js              # GET  /api/health
-│   ├── send-otp.js            # POST /api/send-otp
-│   ├── verify-otp.js          # POST /api/verify-otp
+│   ├── send-otp.js            # GET|POST /api/send-otp?email=
+│   ├── verify-otp.js          # GET|POST /api/verify-otp?email=&otp=
 │   ├── send-email.js          # POST /api/send-email
 │   └── webhooks/mailjet.js    # POST /api/webhooks/mailjet
-├── lib/                       # mailer, otp-store, templates, auth, helpers
-├── examples/client.js         # contoh Node.js
-├── docs/                      # 📚 dokumentasi lengkap (baca ini!)
-│   ├── QUICKSTART.md
-│   ├── API_SPEC.md
-│   ├── INTEGRATION_WEB_UTAMA.md
-│   ├── WEBHOOK_MAILJET.md
-│   ├── EXAMPLES.md
-│   └── DEPLOYMENT.md
+├── lib/                       # mailer, otp-store, templates, helpers
+├── docs/                      # 📚 dokumentasi
 ├── scripts/smoke-test.js
 ├── .env.example
-├── vercel.json
-└── package.json
+└── vercel.json
 ```
-
-## Cara Pakai Cepat
-
-```bash
-# Kirim OTP
-curl -X POST https://auth-fyymotion.vercel.app/api/send-otp \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: KEY-KAMU" \
-  -d '{"email":"user@example.com","appName":"Fyymotion"}'
-
-# Verifikasi OTP
-curl -X POST https://auth-fyymotion.vercel.app/api/verify-otp \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: KEY-KAMU" \
-  -d '{"email":"user@example.com","otp":"123456"}'
-
-# Cek status
-curl https://auth-fyymotion.vercel.app/api/health
-curl https://auth-fyymotion.vercel.app/api/webhooks/mailjet
-```
-
-> **PENTING:** Panggil dari **backend** Web Utama, jangan dari browser — API key bocor!
-
-Lihat [docs/EXAMPLES.md](./docs/EXAMPLES.md) untuk PHP Laravel & Python.
-
-## ENV di Vercel
-
-| Variable | Contoh |
-|---|---|
-| `SMTP_HOST` | `in-v3.mailjet.com` / `smtp.gmail.com` |
-| `SMTP_PORT` | `587` |
-| `SMTP_USER` | API Key Mailjet / email |
-| `SMTP_PASS` | Secret Key / App Password |
-| `SMTP_FROM` | `Fyymotion <noreply@fyymotion.com>` |
-| `API_KEYS` | `key-acak-panjang` |
-| `MAILJET_WEBHOOK_TOKEN` | `token-webhook` |
-| `WEBHOOK_FORWARD_URL` | `https://web-utama.com/api/mailjet-events` |
-
-Full list: [.env.example](./.env.example) + [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ## Development Lokal
 
@@ -130,9 +99,21 @@ Full list: [.env.example](./.env.example) + [DEPLOYMENT.md](./docs/DEPLOYMENT.md
 npm install
 cp .env.example .env.local
 npm run dev   # vercel dev -> http://localhost:3000
-npm test      # smoke test
+npm test      # smoke test (tanpa SMTP)
 ```
+
+## ENV di Vercel
+
+| Variable | Contoh |
+|----------|--------|
+| `TEMP_MAIL` | `true` = Ethereal temp-mail (previewUrl) |
+| `SUBJECT_PREFIX` | `[noreply]` |
+| `SMTP_HOST` | `in-v3.mailjet.com` / `ethereal` |
+| `SMTP_FROM` | `Fyymotion <noreply@fyymotion.com>` |
+| `API_KEYS` | tidak perlu lagi (dihapus) |
+
+Full list: [.env.example](./.env.example) + [DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 
 ---
 
-**FYI Web Utama:** Semua docs sudah di GitHub (`IKOO-INC/fyymail`). Tim Web Utama tinggal ikut [INTEGRATION_WEB_UTAMA.md](./docs/INTEGRATION_WEB_UTAMA.md) checklist — 30 menit siap.
+**Tim Web Utama:** ikuti [INTEGRATION_WEB_UTAMA.md](./docs/INTEGRATION_WEB_UTAMA.md) — 15 menit siap.

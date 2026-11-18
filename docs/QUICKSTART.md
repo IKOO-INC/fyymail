@@ -1,78 +1,108 @@
 # ⚡ Quick Start — 5 Menit
 
-Untuk tim Web Utama yang mau langsung coba.
+> **Fyymail sekarang: tanpa apikey + support GET. Private untuk pribadi.**
+
+**Base URL:**
+```
+Prod   : https://auth-fyymotion.vercel.app
+Preview: https://auth-fyymotion-git-arena-d4a3315d-fyymail-yoo23mann.vercel.app
+Local  : http://localhost:3000
+```
 
 ---
 
-## 1. Dapatkan API Key
-
-Tanya DevOps Fyymotion Auth untuk `API_KEYS`. Contoh:
-```
-a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
-```
-Simpan di `.env` Web Utama:
-```env
-FYMAIL_URL=https://auth-fyymotion.vercel.app
-FYMAIL_API_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0
-Fyymotion <noreply@fyymotion.com> = pengirim email
-```
-
-> Generate baru: `openssl rand -hex 32`
-
----
-
-## 2. Test API Hidup?
+## 1. Cek API hidup?
 
 ```bash
 curl https://auth-fyymotion.vercel.app/api/health
+# atau buka di browser
 ```
-Harus balas:
+Response:
 ```json
-{"success":true,"service":"fyymotion-auth","status":"ok", ...}
+{
+  "success": true,
+  "service": "fyymotion-auth",
+  "from": "Fyymotion <noreply@fyymotion.com>",
+  "status": "ok",
+  "smtpConfigured": true,
+  "mode": "temp-mail (ethereal)",
+  "subjectPrefix": "[noreply]"
+}
 ```
+
+- `mode: temp-mail` = pakai Ethereal (ga perlu validasi domain, buat testing)
+- `mode: smtp` = pakai Mailjet/Gmail beneran
 
 ---
 
-## 3. Kirim OTP (dari Backend!)
+## 2. Kirim OTP — tinggal paste di browser!
 
-**JANGAN dari browser** — API key akan bocor.
+**GET (paling gampang, tanpa apikey):**
 
-```bash
-curl -X POST https://auth-fyymotion.vercel.app/api/send-otp \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: API_KEY_KAMU" \
-  -d '{"email":"test@example.com","appName":"Fyymotion"}'
 ```
+https://auth-fyymotion.vercel.app/api/send-otp?email=user@gmail.com&appName=Fyymotion
+```
+
+Buka URL itu di browser → langsung kekirim!
+
+Param GET:
+
+| Param | Wajib | Contoh |
+|-------|-------|--------|
+| `email` | ✅ | `user@gmail.com` |
+| `appName` | ❌ | `Fyymotion` (default) |
+| `purpose` | ❌ | `verifikasi akun` |
+| `otp` | ❌ | `123456` (kalau mau pakai OTP custom) |
 
 Response:
 ```json
 {
   "success": true,
   "message": "OTP berhasil dikirim.",
-  "email": "t***@example.com",
+  "email": "u***@gmail.com",
   "expiresIn": 600,
-  "expiresInMinutes": 10
+  "expiresInMinutes": 10,
+  "previewUrl": "https://ethereal.email/message/xxx",
+  "mode": "temp-mail",
+  "note": "Mode temp mail aktif — cek previewUrl"
 }
 ```
-User akan terima email dari `Fyymotion <noreply@fyymotion.com>` dengan kode 6 digit.
+
+- Kalau `mode: temp-mail`, buka `previewUrl` buat lihat email (inbox Ethereal, bukan Gmail beneran)
+- Kalau `mode: smtp`, email masuk ke inbox Gmail beneran dengan subject `[noreply] Kode OTP Fyymotion: 123456`
+
+**POST juga bisa (dari backend):**
+
+```bash
+curl "https://auth-fyymotion.vercel.app/api/send-otp?email=user@gmail.com&appName=Fyymotion"
+# atau
+curl -X POST https://auth-fyymotion.vercel.app/api/send-otp \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@gmail.com","appName":"Fyymotion"}'
+```
 
 ---
 
-## 4. Verifikasi OTP
+## 3. Verifikasi OTP
 
+**GET:**
+```
+https://auth-fyymotion.vercel.app/api/verify-otp?email=user@gmail.com&otp=123456
+```
+
+**POST:**
 ```bash
 curl -X POST https://auth-fyymotion.vercel.app/api/verify-otp \
   -H "Content-Type: application/json" \
-  -H "x-api-key: API_KEY_KAMU" \
-  -d '{"email":"test@example.com","otp":"123456"}'
+  -d '{"email":"user@gmail.com","otp":"123456"}'
 ```
 
-Response sukses:
+Response valid:
 ```json
 {"success":true,"valid":true,"message":"OTP valid."}
 ```
 
-Response salah/expired:
+Response salah:
 ```json
 {"success":false,"valid":false,"error":"Kode OTP salah."}
 {"success":false,"valid":false,"error":"OTP sudah kedaluwarsa."}
@@ -81,40 +111,31 @@ Response salah/expired:
 
 ---
 
-## 5. Pasang di Web Utama
+## 4. Pakai di Aplikasi Utama
 
-Lihat **contoh lengkap copy-paste** di:
-
-- [Integration Web Utama →](./INTEGRATION_WEB_UTAMA.md) — checklist lengkap
-- [Examples →](./EXAMPLES.md) — Node.js, PHP Laravel, Python
-
-Paling simple (Node.js/Express):
+Paling simple — fetch langsung dari backend/frontend (ga perlu apikey):
 
 ```javascript
-// .env: FYMAIL_URL, FYMAIL_API_KEY
+// kirim OTP
+await fetch(`https://auth-fyymotion.vercel.app/api/send-otp?email=${email}&appName=Fyymotion`)
 
-async function sendOtp(email) {
-  const res = await fetch(`${process.env.FYMAIL_URL}/api/send-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.FYMAIL_API_KEY },
-    body: JSON.stringify({ email, appName: 'Fyymotion' })
-  });
-  return res.json();
-}
-
-async function verifyOtp(email, otp) {
-  const res = await fetch(`${process.env.FYMAIL_URL}/api/verify-otp`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.FYMAIL_API_KEY },
-    body: JSON.stringify({ email, otp })
-  });
-  return res.json(); // { valid: true/false }
-}
+// verify OTP
+await fetch(`https://auth-fyymotion.vercel.app/api/verify-otp?email=${email}&otp=${code}`)
 ```
+
+Lihat contoh lengkap di [INTEGRATION_WEB_UTAMA.md](./INTEGRATION_WEB_UTAMA.md) dan [EXAMPLES.md](./EXAMPLES.md).
 
 ---
 
-## Selanjutnya
+## 5. Catatan Mode
 
-- Baca [API_SPEC.md](./API_SPEC.md) untuk detail field, error code, rate limit
-- Setup webhook tracking di [WEBHOOK_MAILJET.md](./WEBHOOK_MAILJET.md) (opsional)
+| Vercel ENV | Mode | Subject | Inbox |
+|------------|------|---------|-------|
+| `TEMP_MAIL=true` | `temp-mail (ethereal)` | `[noreply] Kode OTP ...` | cek `previewUrl` (ethereal.email) |
+| `SMTP_HOST=in-v3.mailjet.com` | `smtp` | `[noreply] Kode OTP ...` | inbox Gmail beneran (`noreply@fyymotion.com`) |
+
+Ganti mode tinggal ubah ENV di Vercel → Redeploy.
+
+---
+
+Selanjutnya: [API Spec](./API_SPEC.md) | [Integrasi Web Utama](./INTEGRATION_WEB_UTAMA.md)

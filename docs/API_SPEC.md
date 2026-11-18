@@ -1,40 +1,18 @@
 # 🔌 API Specification — Fyymotion Auth
 
-Base URL: `https://auth-fyymotion.vercel.app`
-
-Semua response JSON. Time dalam ISO8601 UTC, kecuali webhook Mailjet pakai Unix timestamp.
-
----
-
-## Authentication
-
-Semua endpoint kecuali `GET /api/health` dan `GET /api/webhooks/mailjet` **wajib** API Key.
-
-Kirim via salah satu header:
-
-```http
-x-api-key: YOUR_API_KEY
-# atau
-Authorization: Bearer YOUR_API_KEY
+Base URL:
+```
+Prod   : https://auth-fyymotion.vercel.app
+Preview: https://auth-fyymotion-git-arena-d4a3315d-fyymail-yoo23mann.vercel.app
 ```
 
-`API_KEYS` di Vercel bisa banyak (pisah koma):
-```
-API_KEYS=key-untuk-web-utama,key-untuk-website-lain-1,key-untuk-app-mobile
-```
+Semua response JSON. Time ISO8601 UTC.
 
-Jika key salah / tidak ada → `401`:
-```json
-{"success":false,"error":"API key tidak valid atau tidak ada. Kirim header x-api-key."}
-```
-
-Comparison pakai `timingSafeEqual` (anti timing-attack). Jika `API_KEYS` belum di-set di server → fail-closed (semua request ditolak).
+> **Auth: TIDAK PAKAI APIKEY** — private untuk pribadi. Semua endpoint bisa dipanggil langsung tanpa header `x-api-key`.
 
 ---
 
 ## 1. Health Check
-
-Cek apakah API hidup + konfigurasi SMTP/Redis.
 
 ### `GET /api/health`
 Alias: `GET /health`
@@ -48,16 +26,21 @@ Alias: `GET /health`
   "service": "fyymotion-auth",
   "from": "Fyymotion <noreply@fyymotion.com>",
   "status": "ok",
-  "time": "2026-06-25T10:00:00.000Z",
+  "time": "2026-01-01T00:00:00.000Z",
   "smtpConfigured": true,
-  "redisConfigured": false
+  "redisConfigured": false,
+  "mode": "temp-mail (ethereal)",
+  "subjectPrefix": "[noreply]"
 }
 ```
 
 | Field | Type | Deskripsi |
-|---|---|---|
-| `smtpConfigured` | boolean | `true` kalau `SMTP_HOST/USER/PASS` sudah di-set di Vercel |
+|-------|------|-----------|
+| `from` | string | Pengirim email (kalau temp-mail → `noreply@ethereal.email`) |
+| `smtpConfigured` | boolean | `true` kalau SMTP siap |
 | `redisConfigured` | boolean | `true` kalau Redis Upstash aktif |
+| `mode` | string | `temp-mail (ethereal)` atau `smtp` |
+| `subjectPrefix` | string | Prefix subject, default `[noreply]` |
 
 ---
 
@@ -65,30 +48,45 @@ Alias: `GET /health`
 
 Generate OTP 6 digit, simpan hash, kirim email.
 
-### `POST /api/send-otp`
+### `GET /api/send-otp` atau `POST /api/send-otp`
 
-**Auth:** wajib `x-api-key`
+**Auth:** tidak perlu
 
-**Rate Limit:** 5 request / 10 menit **per email** (default `RATE_LIMIT_MAX=5`, `RATE_LIMIT_WINDOW_SECONDS=600`). Jika melebihi → `429`.
+**Rate Limit:** 5 request / 10 menit **per email** (ENV `RATE_LIMIT_MAX=5`, `RATE_LIMIT_WINDOW_SECONDS=600`). Melebihi → `429`.
 
-**Headers:**
-```http
-Content-Type: application/json
-x-api-key: YOUR_API_KEY
+**Method:** `GET` (query) atau `POST` (JSON) — keduanya sama. GET paling enak buat tes di browser.
+
+#### GET Query Params:
+
+```
+GET /api/send-otp?email=user@example.com&appName=Fyymotion&purpose=verifikasi%20akun&otp=123456
 ```
 
-**Body (JSON):**
+| Param | Wajib | Type | Deskripsi |
+|-------|-------|------|-----------|
+| `email` | ✅ | string | Email tujuan |
+| `to` | ❌ | string | Alias `email` |
+| `appName` | ❌ | string | Nama app di email, max 60 char. Default `Fyymotion` |
+| `app` | ❌ | string | Alias `appName` |
+| `purpose` | ❌ | string | Tujuan, max 80 char |
+| `otp` | ❌ | string | 4-10 digit custom, kalau tidak diisi generate otomatis |
 
-| Field | Wajib | Type | Deskripsi | Contoh |
-|---|---|---|---|---|
-| `email` | ✅ | string | Email tujuan (validasi format) | `user@example.com` |
-| `to` | ❌ | string | Alias untuk `email` | — |
-| `appName` | ❌ | string | Nama app muncul di email, max 60 char. Default `Fyymotion` | `Fyymotion`, `Web Utama` |
-| `app` | ❌ | string | Alias `appName` | — |
-| `purpose` | ❌ | string | Tujuan, max 80 char, muncul di email | `verifikasi akun`, `reset password` |
-| `otp` | ❌ | string (4-10 digit) | Kalau diisi, pakai OTP ini (bukan generate). Berguna kalau Web Utama mau generate & simpan sendiri. | `123456` |
+#### POST Body (JSON):
 
-**Contoh Request — OTP auto-generate:**
+| Field | Wajib | Type | Deskripsi |
+|-------|-------|------|-----------|
+| `email` | ✅ | string | Email tujuan |
+| `to` | ❌ | string | Alias `email` |
+| `appName` | ❌ | string | Default `Fyymotion` |
+| `purpose` | ❌ | string | Max 80 char |
+| `otp` | ❌ | string | 4-10 digit custom |
+
+**Contoh GET:**
+```
+https://auth-fyymotion.vercel.app/api/send-otp?email=user@example.com&appName=Fyymotion
+```
+
+**Contoh POST:**
 ```json
 {
   "email": "user@example.com",
@@ -97,16 +95,9 @@ x-api-key: YOUR_API_KEY
 }
 ```
 
-**Contoh Request — OTP dari client (custom):**
-```json
-{
-  "email": "user@example.com",
-  "appName": "Fyymotion",
-  "otp": "987654"
-}
-```
-
 **Response Sukses `200`:**
+
+*Mode SMTP (email masuk inbox beneran):*
 ```json
 {
   "success": true,
@@ -117,49 +108,60 @@ x-api-key: YOUR_API_KEY
 }
 ```
 
-| Field | Deskripsi |
-|---|---|
-| `email` | Email yang disamarkan (privacy) |
-| `expiresIn` | TTL detik (default 600 = 10 menit, dari `OTP_TTL_SECONDS`) |
-| `expiresInMinutes` | TTL menit (rounded) |
+*Mode temp-mail (Ethereal):*
+```json
+{
+  "success": true,
+  "message": "OTP berhasil dikirim.",
+  "email": "u***@example.com",
+  "expiresIn": 600,
+  "expiresInMinutes": 10,
+  "previewUrl": "https://ethereal.email/message/xxxxx",
+  "mode": "temp-mail",
+  "note": "Mode temp mail aktif — cek previewUrl untuk lihat email"
+}
+```
+
+> Subject email: `[noreply] Kode OTP Fyymotion: 123456` (prefix dari ENV `SUBJECT_PREFIX`, default `[noreply]`)
 
 **Response Error:**
 
 | Status | Body | Penyebab |
-|---|---|---|
-| `400` | `{"success":false,"error":"Format email tidak valid."}` | Email salah format |
-| `400` | `{"success":false,"error":"OTP dari client harus berupa angka 4-10 digit."}` | `otp` custom tidak valid |
-| `401` | `{"success":false,"error":"API key tidak valid..."}` | Key salah |
-| `429` | `{"success":false,"error":"Terlalu banyak permintaan OTP..."}` | Rate limit |
-| `502` | `{"success":false,"error":"Gagal mengirim email. Periksa konfigurasi SMTP di server."}` | SMTP gagal (cek Vercel Logs) |
+|--------|------|----------|
+| `400` | `Format email tidak valid.` | Email salah format |
+| `400` | `OTP dari client harus berupa angka 4-10 digit.` | `otp` custom invalid |
+| `405` | `Method tidak diizinkan. Gunakan GET atau POST.` | Method selain GET/POST |
+| `429` | `Terlalu banyak permintaan OTP...` | Rate limit |
+| `502` | `Gagal mengirim email. Periksa konfigurasi SMTP.` | SMTP gagal |
 
-**CORS:** Header `Access-Control-Allow-Origin` sesuai `ALLOWED_ORIGINS` di Vercel. Jika `*`, semua origin boleh. Disarankan set ke domain Web Utama di production.
-
-**Catatan Keamanan:**
-- OTP **tidak pernah** dikembalikan di response production (`ALLOW_OTP_IN_RESPONSE=false`)
-- Hanya hash SHA-256 + salt yang disimpan (sekali pakai, max 5x coba, 10 menit expired)
-- Jika Redis tidak ada, store di memory (bisa hilang kalau instance serverless restart — untuk production pasang Redis)
+**Catatan:**
+- OTP tidak pernah dibalik di response kecuali `ALLOW_OTP_IN_RESPONSE=true` (hanya dev)
+- Hash disimpan, sekali pakai, max 5x coba, expired 10 menit (ENV `OTP_TTL_SECONDS`)
+- Tanpa Redis → in-memory (hilang kalau serverless restart)
 
 ---
 
 ## 3. Verify OTP
 
-Verifikasi kode yang di-input user.
+### `GET /api/verify-otp` atau `POST /api/verify-otp`
 
-### `POST /api/verify-otp`
+**Auth:** tidak perlu
 
-**Auth:** wajib `x-api-key`
+#### GET Query:
 
-**Body:**
+```
+GET /api/verify-otp?email=user@example.com&otp=123456&appName=Fyymotion
+```
 
-| Field | Wajib | Type | Deskripsi |
-|---|---|---|---|
-| `email` | ✅ | string | Harus sama persis dengan saat send-otp (case-insensitive) |
-| `otp` | ✅ | string | Kode 4-10 digit. Alias: `code` |
-| `code` | ❌ | string | Alias `otp` |
-| `appName` | ❌ | string | Harus sama dengan saat send-otp. Default `Fyymotion` |
+| Param | Wajib | Type |
+|-------|-------|------|
+| `email` | ✅ | string |
+| `otp` | ✅ | string 4-10 digit, alias `code` |
+| `code` | ❌ | alias `otp` |
+| `appName` | ❌ | string, harus sama dengan send-otp |
 
-**Contoh:**
+#### POST Body:
+
 ```json
 {
   "email": "user@example.com",
@@ -178,7 +180,7 @@ Verifikasi kode yang di-input user.
 }
 ```
 
-**Response Tidak Valid `200` (bukan error HTTP, tapi `valid:false`):**
+**Response Tidak Valid `200` (valid:false):**
 ```json
 {"success":false,"valid":false,"email":"u***@example.com","error":"Kode OTP salah."}
 {"success":false,"valid":false,"email":"u***@example.com","error":"OTP tidak ditemukan atau sudah kedaluwarsa."}
@@ -186,49 +188,45 @@ Verifikasi kode yang di-input user.
 {"success":false,"valid":false,"email":"u***@example.com","error":"Terlalu banyak percobaan. Minta OTP baru."}
 ```
 
-> `valid:false` tetap HTTP 200 biar frontend gampang handle tanpa try-catch error.
+> `valid:false` tetap HTTP 200 biar frontend gampang handle.
 
-**Response Error (HTTP error):**
+**Error HTTP:**
 
 | Status | Penyebab |
-|---|---|
-| `400` | `email` invalid atau `otp` kosong / bukan 4-10 digit |
-| `401` | API key salah |
-| `405` | Method bukan POST |
+|--------|----------|
+| `400` | email invalid / otp kosong bukan 4-10 digit |
+| `405` | Method bukan GET/POST |
 
 **Behavior:**
-- OTP **sekali pakai** — setelah `valid:true`, langsung dihapus. Verifikasi lagi dengan kode sama → `OTP tidak ditemukan...`
-- Max attempts default 5 (`OTP_MAX_ATTEMPTS`). Setelah 5x salah → dihapus, user harus minta OTP baru.
-- Comparison pakai `timingSafeEqual`.
+- Sekali pakai — setelah `valid:true` langsung hapus
+- Max 5x salah (`OTP_MAX_ATTEMPTS`) → hapus, minta baru
 
 ---
 
 ## 4. Send Email (Generik)
 
-Kirim email bebas (bukan OTP) — untuk notifikasi, welcome email, dll.
+Kirim email bebas.
 
-### `POST /api/send-email`
+### `POST /api/send-email` (juga support GET)
 
-**Auth:** wajib `x-api-key`
-
-**Rate Limit:** 20 / 10 menit per email tujuan.
+**Auth:** tidak perlu  
+**Rate Limit:** 20 / 10 menit per email
 
 **Body:**
 
-| Field | Wajib | Type | Deskripsi |
-|---|---|---|---|
-| `to` | ✅ | string | Email tujuan. Alias `email` |
-| `email` | ❌ | string | Alias `to` |
-| `subject` | ✅ | string | Judul, max 200 char |
-| `html` | ❌ | string | Body HTML, max 50k char. Salah satu `html`/`text` wajib ada |
-| `text` | ❌ | string | Body text, max 50k char |
+| Field | Wajib | Type |
+|-------|-------|------|
+| `to` | ✅ | Email tujuan, alias `email` |
+| `subject` | ✅ | Max 200 char |
+| `html` | ❌ | Max 50k, salah satu `html`/`text` wajib ada |
+| `text` | ❌ | Max 50k |
 
 **Contoh:**
 ```json
 {
   "to": "user@example.com",
-  "subject": "Selamat datang di Fyymotion!",
-  "html": "<h1>Halo!</h1><p>Akun kamu sudah aktif.</p>"
+  "subject": "Selamat datang!",
+  "html": "<h1>Halo!</h1><p>Akun aktif.</p>"
 }
 ```
 
@@ -237,17 +235,13 @@ Kirim email bebas (bukan OTP) — untuk notifikasi, welcome email, dll.
 {"success":true,"message":"Email berhasil dikirim.","email":"u***@example.com"}
 ```
 
-**Error:** `400` (field kosong/invalid), `401`, `429`, `502` (SMTP gagal).
-
 ---
 
 ## 5. Mailjet Webhook
 
-Terima event tracking dari Mailjet.
-
 ### `GET /api/webhooks/mailjet`
 
-Cek status webhook (tidak perlu auth Mailjet).
+Status webhook.
 
 **Response `200`:**
 ```json
@@ -257,103 +251,65 @@ Cek status webhook (tidak perlu auth Mailjet).
   "webhook": "mailjet",
   "status": "ready",
   "endpoint": "/api/webhooks/mailjet",
-  "method": "POST",
-  "authConfigured": true,
-  "authMethods": {"token":true,"basic":false,"none":false},
-  "redisConfigured": false,
-  "forwardConfigured": false,
-  "docs": "https://dev.mailjet.com/docs/email-api/webhooks/webhooks-overview",
-  "setup": { ... }
+  "authConfigured": true
 }
 ```
 
 ### `POST /api/webhooks/mailjet`
 
-Mailjet POST ke sini setiap ada event.
+Mailjet POST ke sini.
 
-**Auth:** tergantung ENV di Vercel:
-- Jika `MAILJET_WEBHOOK_TOKEN` di-set → harus bawa `?token=xxx` atau header `x-mailjet-token` atau `Authorization: Bearer xxx`
-- Jika `MAILJET_WEBHOOK_USER`+`PASS` di-set → harus Basic Auth `user:pass`
-- Jika tidak ada ENV auth → semua request diizinkan
+**Auth webhook:** jika `MAILJET_WEBHOOK_TOKEN` set → harus `?token=xxx` atau header `x-mailjet-token` atau `Bearer`.
 
-**Body:** JSON object atau array:
-
+**Body:** object/array:
 ```json
 {"event":"sent","email":"user@example.com","MessageID":123,"time":1719300000}
 ```
-atau
-```json
-[
-  {"event":"open","email":"a@example.com","MessageID":1,"time":1719300001,"ip":"1.2.3.4","agent":"Mozilla/5.0"},
-  {"event":"bounce","email":"b@example.com","error":"user unknown","hard_bounce":true,"time":1719300002}
-]
-```
 
-Event types: `sent`, `open`, `click`, `bounce`, `spam`, `blocked`, `unsub`
+Event: `sent`, `open`, `click`, `bounce`, `spam`, `blocked`, `unsub`
 
-**Response `200` (selalu 200 biar Mailjet tidak retry):**
-```json
-{
-  "success": true,
-  "received": 2,
-  "invalid": 0,
-  "events": [
-    {"event":"open","email":"a@example.com","MessageID":1},
-    {"event":"bounce","email":"b@example.com","MessageID":null}
-  ],
-  "message": "2 event diterima."
-}
-```
-
-**Response `401`:** jika token/Basic Auth tidak cocok.
-
-Lihat detail lengkap di [WEBHOOK_MAILJET.md](./WEBHOOK_MAILJET.md).
+Lihat [WEBHOOK_MAILJET.md](./WEBHOOK_MAILJET.md).
 
 ---
 
 ## Error Codes Global
 
-| Status | Arti | Action Web Utama |
-|---|---|---|
-| `200` | Sukses (termasuk `valid:false` untuk verify) | — |
-| `400` | Input invalid | Tampilkan `error` ke user, perbaiki request |
-| `401` | API key salah | Cek `x-api-key`, tanya DevOps |
-| `405` | Method salah | Pakai POST |
-| `429` | Rate limit | Tampilkan "coba lagi dalam X menit", jangan spam retry |
-| `502` | SMTP gagal | Cek log Vercel, coba lagi nanti |
+| Status | Arti |
+|--------|------|
+| `200` | Sukses (termasuk `valid:false`) |
+| `400` | Input invalid |
+| `405` | Method salah (pakai GET/POST) |
+| `429` | Rate limit |
+| `502` | SMTP gagal |
 
-Semua error body:
+Semua error:
 ```json
 {"success":false,"error":"pesan indonesia"}
 ```
 
 ---
 
-## Rate Limit Detail
-
-In-memory per instance (jika tanpa Redis). Untuk production disarankan Redis.
-
-- `POST /api/send-otp`: `RATE_LIMIT_MAX` (default 5) per `RATE_LIMIT_WINDOW_SECONDS` (default 600) per `email`
-- `POST /api/send-email`: 20 / 600 per `email`
-- `POST /api/verify-otp`: tidak ada rate limit global, tapi max attempts per OTP (default 5)
-
----
-
 ## CORS
 
-Diatur via `ALLOWED_ORIGINS` di Vercel:
-
+ENV `ALLOWED_ORIGINS`:
 ```
-ALLOWED_ORIGINS=https://web-utama.com,https://admin.web-utama.com
-# atau
-ALLOWED_ORIGINS=*  (untuk dev, jangan di prod)
+ALLOWED_ORIGINS=*  # dev
+ALLOWED_ORIGINS=https://web-utama.com  # prod
 ```
 
-Server-to-server (backend → backend) CORS tidak berpengaruh.
+Server-to-server CORS tidak ngaruh.
 
 ---
 
-## Versi & Changelog
+## ENV Penting
 
-- `v1.0.0` — Initial: send-otp, verify-otp, send-email, health
-- `v1.1.0` — Tambah webhook Mailjet, SMTP Mailjet, forward URL, Redis log
+| ENV | Default | Deskripsi |
+|-----|---------|-----------|
+| `TEMP_MAIL` | `false` | `true` → Ethereal temp mail (previewUrl) |
+| `SMTP_HOST` | — | `ethereal` juga trigger temp-mail |
+| `SUBJECT_PREFIX` | `[noreply]` | Prefix subject |
+| `OTP_LENGTH` | `6` | Panjang OTP |
+| `OTP_TTL_SECONDS` | `600` | TTL detik |
+| `OTP_MAX_ATTEMPTS` | `5` | Max coba |
+| `RATE_LIMIT_MAX` | `5` | Rate limit per email |
+| `ALLOW_OTP_IN_RESPONSE` | `false` | `true` → balikin otp di response (dev only) |
